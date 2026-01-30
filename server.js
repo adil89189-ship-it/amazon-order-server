@@ -88,7 +88,9 @@ app.post("/api/fetch-ebay-orders", async (req, res) => {
   res.send(response.data);
 });
 
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log("Server running on port", PORT);
 });
+
