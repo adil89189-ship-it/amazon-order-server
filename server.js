@@ -1,6 +1,8 @@
 import express from "express";
 import pkg from "pg";
 import cors from "cors";
+import axios from "axios";
+import "dotenv/config";
 
 const { Pool } = pkg;
 
@@ -74,19 +76,16 @@ app.post("/api/fetch-ebay-orders", async (req, res) => {
   <OrderStatus>All</OrderStatus>
 </GetOrdersRequest>`;
 
-  const response = await fetch(EBAY_TRADING_ENDPOINT, {
-    method: "POST",
+  const response = await axios.post(EBAY_TRADING_ENDPOINT, xml, {
     headers: {
       "X-EBAY-API-CALL-NAME": "GetOrders",
       "X-EBAY-API-SITEID": "0",
       "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
       "Content-Type": "text/xml"
-    },
-    body: xml
+    }
   });
 
-  const text = await response.text();
-  res.send(text);
+  res.send(response.data);
 });
 
 const PORT = process.env.PORT || 10000;
