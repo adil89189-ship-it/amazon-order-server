@@ -1,6 +1,9 @@
 import express from "express";
 import { db } from "./db.js";
 import { fetchEbayOrders } from "./ebayOrders.js";
+import { syncEbayOrders } from "./ebaySync.js";
+
+router.get("/sync-ebay", syncEbayOrders);
 
 const router = express.Router();
 
