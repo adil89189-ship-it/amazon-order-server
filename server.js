@@ -20,6 +20,28 @@ const EBAY_TRADING_ENDPOINT = "https://api.ebay.com/ws/api.dll";
 const EBAY_TOKEN = process.env.EBAY_TRADING_TOKEN;
 
 // =======================
+// AUTO INIT META TABLE
+// =======================
+async function initMetaTable() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    );
+  `);
+
+  await pool.query(`
+    INSERT INTO app_meta (key, value)
+    VALUES ('last_fetch_time', NOW()::text)
+    ON CONFLICT (key) DO NOTHING;
+  `);
+
+  console.log("✅ app_meta table ready");
+}
+
+initMetaTable();
+
+// =======================
 // Health check
 // =======================
 app.get("/", (req, res) => {
@@ -43,7 +65,7 @@ async function getLastFetchTime() {
   const { rows } = await pool.query(
     "SELECT value FROM app_meta WHERE key='last_fetch_time'"
   );
-  return rows[0]?.value;
+  return rows[0].value;
 }
 
 // =======================
@@ -112,7 +134,7 @@ app.post("/api/fetch-ebay-orders", async (req, res) => {
       if (result.rowCount > 0) inserted++;
     }
 
-    // Update last fetch time to NOW
+    // update last fetch time
     await setLastFetchTime(to);
 
     res.json({ status: "ok", new_orders: inserted });
