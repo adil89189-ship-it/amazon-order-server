@@ -3,7 +3,7 @@ import xml2js from "xml2js";
 import { db } from "./db.js";
 
 export async function fetchEbayOrders() {
-  const from = new Date(Date.now() - 24*60*60*1000).toISOString();
+  const from = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const to = new Date().toISOString();
 
   const xml = `<?xml version="1.0" encoding="utf-8"?>
@@ -27,7 +27,7 @@ export async function fetchEbayOrders() {
   });
 
   const parsed = await xml2js.parseStringPromise(res.data);
-  const orders = parsed.GetOrdersResponse.OrderArray?.[0]?.Order || [];
+  const orders = parsed.GetOrdersResponse?.OrderArray?.[0]?.Order || [];
 
   for (const order of orders) {
     const tx = order.TransactionArray[0].Transaction[0];
