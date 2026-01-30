@@ -1,6 +1,5 @@
 import express from "express";
 import pkg from "pg";
-import fetch from "node-fetch";
 
 const { Pool } = pkg;
 const app = express();
@@ -47,12 +46,13 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-// ================== SAVE EBAY ORDERS ==================
-// This assumes your ebay fetch already gives product_url
+// ================== SAVE EBAY ORDER ==================
 app.post("/api/save-order", async (req, res) => {
   const { ebay_order_id, item_title, quantity, product_url } = req.body;
 
-  if (!ebay_order_id) return res.status(400).json({ error: "no id" });
+  if (!ebay_order_id) {
+    return res.status(400).json({ error: "missing ebay_order_id" });
+  }
 
   try {
     await pool.query(`
@@ -74,7 +74,11 @@ app.post("/api/save-order", async (req, res) => {
 
 // ================== SET ORDERED ==================
 app.post("/api/set-ordered", async (req, res) => {
-  const { ebay_order_id, amazon_order_id } = req.body;
+  const { ebay_order_id } = req.body;
+
+  if (!ebay_order_id) {
+    return res.status(400).json({ error: "missing ebay_order_id" });
+  }
 
   try {
     await pool.query(`
