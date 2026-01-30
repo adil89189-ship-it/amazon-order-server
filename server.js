@@ -1,17 +1,96 @@
 import express from "express";
+import pkg from "pg";
+import fetch from "node-fetch";
 import cors from "cors";
-import dotenv from "dotenv";
-import routes from "./routes.js";
 
-dotenv.config();
+const { Pool } = pkg;
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.use("/api", routes);
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
-const PORT = process.env.PORT || 3000;
+const EBAY_TRADING_ENDPOINT = "https://api.ebay.com/ws/api.dll";
+const EBAY_TOKEN = process.env.EBAY_TRADING_TOKEN;
+
+// =======================
+// Health check
+// =======================
+app.get("/", (req, res) => {
+  res.json({ status: "Backend running" });
+});
+
+// =======================
+// Get Orders from DB
+// =======================
+app.get("/api/orders", async (req, res) => {
+  const { rows } = await pool.query(
+    "SELECT * FROM orders ORDER BY created_at DESC"
+  );
+  res.json(rows);
+});
+
+// =======================
+// Save order to DB
+// =======================
+app.post("/api/orders", async (req, res) => {
+  const {
+    ebay_order_id,
+    buyer_name,
+    buyer_address,
+    item_title,
+    item_sku,
+    quantity,
+    price
+  } = req.body;
+
+  await pool.query(
+    `INSERT INTO orders 
+     (ebay_order_id, buyer_name, buyer_address, item_title, item_sku, quantity, price)
+     VALUES ($1,$2,$3,$4,$5,$6,$7)
+     ON CONFLICT (ebay_order_id) DO NOTHING`,
+    [ebay_order_id, buyer_name, buyer_address, item_title, item_sku, quantity, price]
+  );
+
+  res.json({ success: true });
+});
+
+// =======================
+// Fetch eBay orders (Trading API)
+// =======================
+app.post("/api/fetch-ebay-orders", async (req, res) => {
+  const xml = `
+<?xml version="1.0" encoding="utf-8"?>
+<GetOrdersRequest xmlns="urn:ebay:apis:eBLBaseComponents">
+  <RequesterCredentials>
+    <eBayAuthToken>${EBAY_TOKEN}</eBayAuthToken>
+  </RequesterCredentials>
+  <CreateTimeFrom>${new Date(Date.now() - 24*60*60*1000).toISOString()}</CreateTimeFrom>
+  <CreateTimeTo>${new Date().toISOString()}</CreateTimeTo>
+  <OrderRole>Seller</OrderRole>
+  <OrderStatus>All</OrderStatus>
+</GetOrdersRequest>`;
+
+  const response = await fetch(EBAY_TRADING_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "X-EBAY-API-CALL-NAME": "GetOrders",
+      "X-EBAY-API-SITEID": "0",
+      "X-EBAY-API-COMPATIBILITY-LEVEL": "967",
+      "Content-Type": "text/xml"
+    },
+    body: xml
+  });
+
+  const text = await response.text();
+  res.send(text); // for now raw XML
+});
+
+const PORT = process.env.PORT || 10000;
 app.listen(PORT, () => {
-  console.log("Backend running on port", PORT);
+  console.log("Server running on port", PORT);
 });
