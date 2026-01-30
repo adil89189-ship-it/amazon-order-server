@@ -4,11 +4,10 @@ import pkg from "pg";
 import dotenv from "dotenv";
 
 dotenv.config();
-
 const { Pool } = pkg;
 
 const app = express();
-app.use(cors({ origin: "*"})); // ✅ THIS FIXES YOUR ERROR
+app.use(cors({ origin: "*" }));
 app.use(express.json());
 
 const pool = new Pool({
@@ -16,35 +15,26 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false }
 });
 
-app.get("/", (req, res) => {
-  res.send("API OK");
-});
+app.get("/", (req, res) => res.send("API OK"));
 
 // SAVE ORDER
 app.post("/api/save-order", async (req, res) => {
   const { ebay_order_id, item_title, quantity, product_url } = req.body;
-
-  if (!ebay_order_id) {
-    return res.status(400).json({ error: "Missing ebay_order_id" });
-  }
+  if (!ebay_order_id) return res.status(400).json({ error: "Missing ebay_order_id" });
 
   try {
-    await pool.query(
-      `
+    await pool.query(`
       INSERT INTO orders (ebay_order_id, item_title, quantity, product_url, order_status)
       VALUES ($1,$2,$3,$4,'pending')
       ON CONFLICT (ebay_order_id)
-      DO UPDATE SET
-        item_title = EXCLUDED.item_title,
-        quantity = EXCLUDED.quantity,
-        product_url = EXCLUDED.product_url
-      `,
-      [ebay_order_id, item_title, quantity, product_url]
-    );
+      DO UPDATE SET item_title=EXCLUDED.item_title,
+                    quantity=EXCLUDED.quantity,
+                    product_url=EXCLUDED.product_url
+    `, [ebay_order_id, item_title, quantity || 1, product_url]);
 
     res.json({ ok: true });
-  } catch (err) {
-    console.error("DB ERROR:", err);
+  } catch (e) {
+    console.error(e);
     res.status(500).json({ error: "db error" });
   }
 });
@@ -52,19 +42,17 @@ app.post("/api/save-order", async (req, res) => {
 // GET ORDERS
 app.get("/api/orders", async (req, res) => {
   try {
-    const result = await pool.query(
-      "SELECT * FROM orders ORDER BY id DESC"
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
+    const r = await pool.query("SELECT * FROM orders ORDER BY id DESC");
+    res.json(r.rows);
+  } catch (e) {
     res.status(500).json({ error: "db error" });
   }
 });
 
-// UPDATE STATUS
+// SET STATUS
 app.post("/api/set-status", async (req, res) => {
   const { ebay_order_id, status } = req.body;
+  if (!ebay_order_id || !status) return res.status(400).json({ error: "Missing params" });
 
   try {
     await pool.query(
@@ -72,13 +60,9 @@ app.post("/api/set-status", async (req, res) => {
       [status, ebay_order_id]
     );
     res.json({ ok: true });
-  } catch (err) {
-    console.error(err);
+  } catch (e) {
     res.status(500).json({ error: "db error" });
   }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+app.listen(process.env.PORT || 10000, () => console.log("Server running"));
