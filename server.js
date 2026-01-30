@@ -1,6 +1,5 @@
 import express from "express";
 import pkg from "pg";
-import fetch from "node-fetch";
 import cors from "cors";
 
 const { Pool } = pkg;
@@ -87,7 +86,7 @@ app.post("/api/fetch-ebay-orders", async (req, res) => {
   });
 
   const text = await response.text();
-  res.send(text); // for now raw XML
+  res.send(text);
 });
 
 const PORT = process.env.PORT || 10000;
